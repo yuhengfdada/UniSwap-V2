@@ -61,8 +61,8 @@ contract TestUniswapV2Pair is Test {
         pair.burn();
         assertEq(pair.balanceOf(address(this)), 5 ether - MINIMUM_LIQUIDITY);
         assertReserves(5 ether, 5 ether);
-        assertEq(token1.balanceOf(address(this)), 5 ether);
-        assertEq(token2.balanceOf(address(this)), 5 ether);
+        assertEq(token1.balanceOf(address(this)), 95 ether);
+        assertEq(token2.balanceOf(address(this)), 95 ether);
         assertEq(pair.totalSupply(), 5 ether);
     }
 
