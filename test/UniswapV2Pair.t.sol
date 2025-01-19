@@ -17,7 +17,8 @@ contract TestUniswapV2Pair is Test {
     function setUp() public {
         token1 = new Token("TokenX", "X", 100 ether);
         token2 = new Token("TokenY", "Y", 100 ether);
-        pair = new UniswapV2Pair(address(token1), address(token2));
+        pair = new UniswapV2Pair();
+        pair.initialize(address(token1), address(token2));
     }
 
     function assertReserves(uint256 token0Reserve, uint256 token1Reserve) public view {

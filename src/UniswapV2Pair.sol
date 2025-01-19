@@ -26,7 +26,9 @@ contract UniswapV2Pair is ERC20 {
     event Burn(address indexed sender, uint256 amount0, uint256 amount1);
     event Swap(address indexed sender, uint256 amount0Out, uint256 amount1Out, address indexed to);
 
-    constructor(address _token0, address _token1) ERC20("Uniswap-V2", "UNIV2", 18) {
+    constructor() ERC20("Uniswap-V2", "UNIV2", 18) {}
+
+    function initialize(address _token0, address _token1) public {
         token0 = _token0;
         token1 = _token1;
     }
