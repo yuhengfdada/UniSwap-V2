@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {UniswapV2Pair} from "./UniswapV2Pair.sol";
 
 contract UniswapV2Factory {
-    mapping(address => mapping(address => address)) pairs;
+    mapping(address => mapping(address => address)) public pairs;
 
     function createPair(address _token0, address _token1) public returns (address) {
         require(_token0 != address(0) && _token1 != address(0));

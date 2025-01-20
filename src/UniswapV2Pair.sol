@@ -67,7 +67,7 @@ contract UniswapV2Pair is ERC20 {
     }
 
     // No token amount is passed in. Users have to transfer tokens to the Pair in the same transaction.
-    function mint() public {
+    function mint() public returns (uint256) {
         // gas savings
         (uint112 _reserve0, uint112 _reserve1) = getReserves();
 
@@ -92,6 +92,8 @@ contract UniswapV2Pair is ERC20 {
         _updateReserves(balance0, balance1, _reserve0, _reserve1);
 
         emit Mint(msg.sender, amount0, amount1);
+
+        return liquidity;
     }
 
     // No burn amount is passed in. Users have to transfer LP Token to the Pair in the same transaction.
