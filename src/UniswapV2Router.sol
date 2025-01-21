@@ -30,6 +30,41 @@ contract UniswapV2Router {
         amountLiquidity = pair.mint();
     }
 
+    function removeLiquidity(address tokenA, address tokenB, uint256 liquidity, uint256 amountAMin, uint256 amountBMin)
+        public
+        returns (uint256 amountA, uint256 amountB)
+    {
+        address pairAddr = _pairOf(tokenA, tokenB);
+        require(pairAddr != address(0));
+        UniswapV2Pair pair = UniswapV2Pair(pairAddr);
+
+        pair.transferFrom(msg.sender, pairAddr, liquidity);
+        (amountA, amountB) = pair.burn();
+        require(amountA >= amountAMin && amountB >= amountBMin);
+    }
+
+    // TODO
+    // function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to)
+    //     public
+    //     returns (uint256[] memory amounts)
+    // {
+    //     amounts = _getAmounts(amountIn, path);
+    //     if (amounts[amounts.length - 1] < amountOutMin) {
+    //         revert("swapExactTokensForTokens: insufficient output");
+    //     }
+    // }
+
+    function _getAmount(uint256 _inputAmount, uint256 _inputReserve, uint256 _outputReserve)
+        private
+        pure
+        returns (uint256)
+    {
+        require(_inputReserve >= 0 && _outputReserve >= 0);
+        // We deduct 0.3% fee from _inputAmount.
+        // Note that Solidity doesn't support floating-point calculation so the formula has to be tweaked a bit.
+        return (_inputAmount * 997 * _outputReserve) / (_inputReserve * 1000 + _inputAmount * 997);
+    }
+
     function _safeTransferFrom(address token, address from, address to, uint256 amount) public {
         (bool success, bytes memory data) =
             token.call(abi.encodeWithSignature("transferFrom(address,address,uint256)", from, to, amount));

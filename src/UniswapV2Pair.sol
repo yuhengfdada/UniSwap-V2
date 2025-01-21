@@ -8,6 +8,10 @@ import {UQ112x112} from "../lib/UQ112x112.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 
+interface IUniswapV2Callee {
+    function uniswapV2Call(address sender, uint256 amount0, uint256 amount1, bytes calldata data) external;
+}
+
 contract UniswapV2Pair is ERC20 {
     address token0;
     address token1;
@@ -97,7 +101,7 @@ contract UniswapV2Pair is ERC20 {
     }
 
     // No burn amount is passed in. Users have to transfer LP Token to the Pair in the same transaction.
-    function burn() public {
+    function burn() public returns (uint256, uint256) {
         // gas savings
         (uint112 _reserve0, uint112 _reserve1) = getReserves();
 
@@ -118,25 +122,41 @@ contract UniswapV2Pair is ERC20 {
         _updateReserves(balance0, balance1, _reserve0, _reserve1);
 
         emit Burn(msg.sender, amount0, amount1);
+
+        return (amount0, amount1);
     }
 
-    function swap(uint256 amount0Out, uint256 amount1Out, address to) public {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) public {
         require(amount0Out > 0 || amount1Out > 0, "Out amount should be greater than 0");
 
         // gas savings
         (uint112 _reserve0, uint112 _reserve1) = getReserves();
         require(amount0Out <= _reserve0 && amount1Out <= _reserve1, "No enough reserve");
 
-        // The user should have sent the tokens in before calling swap(). Below calculates the expected token amount after the transaction.
-        uint256 balance0 = IERC20(token0).balanceOf(address(this)) - amount0Out;
-        uint256 balance1 = IERC20(token1).balanceOf(address(this)) - amount1Out;
-        // need to cast _reserve to uint256. Otherwise easy to overflow uint112
-        require(balance0 * balance1 >= uint256(_reserve0) * uint256(_reserve1), "Invalid K");
-
-        _updateReserves(balance0, balance1, _reserve0, _reserve1);
-
+        // optimistic transfer (for flash loans)
         if (amount0Out > 0) _safeTransfer(token0, to, amount0Out);
         if (amount1Out > 0) _safeTransfer(token1, to, amount1Out);
+        if (data.length > 0) IUniswapV2Callee(to).uniswapV2Call(msg.sender, amount0Out, amount1Out, data);
+
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+
+        // The user should have sent in the tokens before calling swap(), if not loaning.
+        // _reserve0 - amount0Out is what's left in the balance after optimistic transfer. If balance is greater than that it means user has passed in some tokens.
+        uint256 amount0In = balance0 > (_reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
+        uint256 amount1In = balance1 > (_reserve1 - amount1Out) ? balance1 - (_reserve1 - amount1Out) : 0;
+
+        // need to cast _reserve to uint256. Otherwise easy to overflow uint112
+        // the 0.3% fee is deducted on anything the user has passed in (amount0In / amount1In).
+        // after fee deduction, K should be greater than the last K.
+        // new K =  (balance0 - 0.003*amount0In) * (balance1 - 0.003*amount1In)
+        require(
+            (1000 * balance0 - 3 * amount0In) * (1000 * balance1 - 3 * amount1In)
+                >= 1000 * 1000 * uint256(_reserve0) * uint256(_reserve1),
+            "Invalid K"
+        );
+
+        _updateReserves(balance0, balance1, _reserve0, _reserve1);
 
         emit Swap(msg.sender, amount0Out, amount1Out, to);
     }
